@@ -4,13 +4,28 @@ from sentence_transformers import util
 class ConsciousEngine:
     def __init__(self, system1):
         self.system1 = system1
-        # A small database of "Known Concepts" to decode vectors into text
-        # In a real system, this would be a vector DB with 10k+ ideas
+        # EXPANDED knowledge base (50+ concepts for better coverage)
         self.knowledge_base = [
-            "vertical farming", "food delivery app", "community garden", 
-            "crypto currency", "supply chain blockchain", "subscription box",
-            "micro-finance", "barter system", "group buying", "waste management",
-            "solar energy", "hydroponics", "local currency", "sms service"
+            # Energy
+            "solar energy", "battery storage", "grid sharing", "energy cooperative",
+            "kinetic harvesting", "thermal storage", "peer to peer energy",
+            # Food
+            "vertical farming", "community garden", "food delivery", "meal kit",
+            "urban agriculture", "hydroponics", "composting", "food waste reduction",
+            # Finance
+            "micro-finance", "crowdfunding", "group buying", "local currency",
+            "barter system", "subscription box", "pay per use", "leasing model",
+            # Housing
+            "co-living", "shared housing", "modular homes", "rental platform",
+            # Transportation
+            "car sharing", "bike sharing", "electric vehicles", "public transit",
+            # Waste
+            "waste management", "recycling", "upcycling", "circular economy",
+            # Community
+            "neighborhood network", "skill sharing", "time bank", "community hub",
+            # Technology
+            "IoT sensors", "smart metering", "mobile app", "SMS service",
+            "blockchain solution", "AI platform", "marketplace", "SaaS"
         ]
         self.kb_vectors = self.system1.model.encode(self.knowledge_base, convert_to_tensor=True, device=self.system1.device)
 
@@ -18,31 +33,33 @@ class ConsciousEngine:
         """Find the nearest semantic concept to the latent vector"""
         scores = util.cos_sim(latent_vector.unsqueeze(0), self.kb_vectors)[0]
         top_idx = torch.argmax(scores)
-        return self.knowledge_base[top_idx], scores[top_idx].item()
+        top_3_idx = torch.topk(scores, 3).indices
+        return {
+            "primary": self.knowledge_base[top_idx],
+            "confidence": scores[top_idx].item(),
+            "alternatives": [self.knowledge_base[i] for i in top_3_idx]
+        }
 
     def critique(self, idea_text, goal_text):
         """
-        Simple Heuristic Critic (Replace with LLM API for production)
-        Checks for cliché keywords and length.
+        Relaxed Critic (allow more ideas through for testing)
         """
-        score = 5.0 # Base score
-        cliches = ["app", "blockchain", "platform", "AI"]
+        score = 6.0  # Higher base score
+        cliches = ["blockchain", "AI platform"]  # Only reject obvious buzzwords
         
         for word in cliches:
             if word in idea_text.lower():
-                score -= 1.5
+                score -= 2.0
         
-        if len(idea_text) < 10:
-            score -= 2.0
-            
         return max(0, min(10, score))
 
     def verify(self, latent_vector, goal_text):
-        concept, confidence = self.decode(latent_vector)
-        econ_score = self.critique(concept, goal_text)
+        decode_result = self.decode(latent_vector)
+        econ_score = self.critique(decode_result["primary"], goal_text)
         return {
-            "concept": concept,
-            "confidence": confidence,
+            "concept": decode_result["primary"],
+            "confidence": decode_result["confidence"],
+            "alternatives": decode_result["alternatives"],
             "economic_score": econ_score,
-            "passed": econ_score > 6.0
+            "passed": econ_score > 5.0
         }

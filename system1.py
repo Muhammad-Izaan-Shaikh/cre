@@ -17,26 +17,29 @@ class SubconsciousEngine:
     def embed(self, text):
         return self.model.encode(text, convert_to_tensor=True, device=self.device)
     
-    def calculate_energy(self, vector, goal_vector, lambda_repel=0.5):
+    def calculate_energy(self, vector, goal_vector, lambda_repel=0.3):
         """
-        Energy Function:
-        1. Minimize distance to Goal (Alignment)
-        2. Maximize distance from Cliché Centroid (Novelty/Inversion)
+        FIXED Energy Function:
+        1. Minimize distance to Goal (Alignment) - PRIMARY
+        2. Maximize distance from Cliché Centroid (Novelty) - SECONDARY
+        3. Keep vector on valid semantic manifold
         """
-        # Alignment Energy (Lower is better)
+        # Alignment Energy (Lower is better) - Weight: 1.0
         align_loss = 1 - torch.cosine_similarity(vector.unsqueeze(0), goal_vector.unsqueeze(0))[0]
         
-        # Repulsion Energy (Higher distance from cliché is better -> Lower Energy)
+        # Repulsion Energy - Weight: 0.3 (less aggressive)
+        # We want to AVOID clichés, so HIGH similarity = HIGH energy (bad)
         repel_loss = torch.cosine_similarity(vector.unsqueeze(0), self.cliche_centroid.unsqueeze(0))[0]
+        repel_penalty = torch.relu(repel_loss - 0.5)  # Only penalize if too close to cliché
         
-        # Total Energy
-        energy = align_loss - (lambda_repel * repel_loss)
+        # Total Energy (Alignment is primary, novelty is secondary constraint)
+        energy = align_loss + (lambda_repel * repel_penalty)
         return energy
 
-    def incubate(self, goal_text, steps=50, noise_level=0.1, lambda_repel=0.5):
+    def incubate(self, goal_text, steps=50, noise_level=0.05, lambda_repel=0.3):
         """
         The Dreaming Loop:
-        Starts at Goal, adds noise, iteratively minimizes Energy.
+        Starts at Goal, adds SMALL noise, iteratively minimizes Energy.
         """
         print(f"Incubating goal: '{goal_text}'...")
         goal_vec = self.embed(goal_text)
@@ -46,23 +49,23 @@ class SubconsciousEngine:
         current_vec.requires_grad = True
         
         history = []
-        optimizer = torch.optim.Adam([current_vec], lr=0.05)
+        optimizer = torch.optim.Adam([current_vec], lr=0.02)  # Reduced learning rate
         
         for i in range(steps):
             optimizer.zero_grad()
             
-            # Calculate Energy BEFORE adding noise (preserve gradient graph)
+            # Calculate Energy
             energy = self.calculate_energy(current_vec, goal_vec, lambda_repel)
             
-            # Backprop to find direction of lower energy
+            # Backprop
             energy.backward()
             
-            # Manual gradient step (gives us more control)
+            # Manual gradient step
             with torch.no_grad():
                 # Apply gradient
                 current_vec -= optimizer.param_groups[0]['lr'] * current_vec.grad
                 
-                # Add Stochastic Noise (Simulating Subconscious Drift)
+                # Add SMALL Stochastic Noise (reduced from 0.2 to 0.05)
                 if i > 0:
                     noise = torch.randn_like(current_vec) * noise_level
                     current_vec += noise
