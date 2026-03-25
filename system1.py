@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import subprocess
 from sentence_transformers import SentenceTransformer
 
 class SubconsciousEngine:
@@ -85,3 +86,74 @@ class SubconsciousEngine:
                 print(f"Step {i}: Energy = {energy.item():.4f}")
         
         return current_vec.detach(), history
+    
+    def propose_goal_refinement(self, original_goal, idea_dict, anchors):
+        """
+        Compare generated idea to original goal and propose refinement.
+        """
+        original_vec = self.embed(original_goal)
+        
+        # Embed the generated idea description
+        idea_text = f"{idea_dict.get('idea_name', '')} {idea_dict.get('description', '')}"
+        idea_vec = self.embed(idea_text)
+        
+        # Calculate divergence
+        similarity = torch.cosine_similarity(original_vec.unsqueeze(0), idea_vec.unsqueeze(0))[0].item()
+        divergence = 1 - similarity
+        
+        # Determine if refinement is warranted
+        if divergence > 0.35:
+            # Ask LLM to articulate the refinement - SIMPLER PROMPT
+            prompt = f"""Original Goal: {original_goal}
+Generated Idea: {idea_text}
+Anchors: {', '.join(anchors)}
+Divergence: {divergence:.2f}
+
+What deeper need does this idea address that the original goal missed?
+Propose a refined goal in ONE sentence (max 20 words).
+
+Format:
+REFINED_GOAL: [your refined goal]
+REASONING: [your reasoning]
+"""
+            result = subprocess.run(
+                ['ollama', 'run', 'llama3.2', prompt],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            # Parse with simple string extraction (more robust than JSON)
+            output = result.stdout.strip()
+            refined_goal = self._extract_line(output, "REFINED_GOAL:")
+            reasoning = self._extract_line(output, "REASONING:")
+            
+            if refined_goal and len(refined_goal) > 10:
+                return {
+                    "divergent": True,
+                    "divergence_score": divergence,
+                    "refined_goal": refined_goal,
+                    "reasoning": reasoning or "Goal refinement based on semantic drift"
+                }
+            else:
+                # Fallback: use divergence alone
+                return {
+                    "divergent": True,
+                    "divergence_score": divergence,
+                    "refined_goal": f"{original_goal} (explored via {anchors[0]})",
+                    "reasoning": f"High divergence ({divergence:.2f}) suggests alternative framing"
+                }
+        else:
+            return {
+                "divergent": False,
+                "divergence_score": divergence,
+                "refined_goal": original_goal,
+                "reasoning": "Idea aligns well with original goal"
+            }
+    
+    def _extract_line(self, text, prefix):
+        """Extract value after a prefix like 'REFINED_GOAL:'"""
+        for line in text.split('\n'):
+            if line.startswith(prefix):
+                return line.replace(prefix, '').strip()
+        return None
