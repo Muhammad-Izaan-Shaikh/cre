@@ -87,68 +87,46 @@ class SubconsciousEngine:
         
         return current_vec.detach(), history
     
-    def propose_goal_refinement(self, original_goal, idea_dict, anchors):
+    def propose_goal_refinement(self, original_goal, current_goal, idea_dict, anchors):
         """
-        Compare generated idea to original goal and propose refinement.
+        Propose goal refinement based on idea quality, not drift thresholds.
         """
-        original_vec = self.embed(original_goal)
-        
-        # Embed the generated idea description
         idea_text = f"{idea_dict.get('idea_name', '')} {idea_dict.get('description', '')}"
-        idea_vec = self.embed(idea_text)
         
-        # Calculate divergence
-        similarity = torch.cosine_similarity(original_vec.unsqueeze(0), idea_vec.unsqueeze(0))[0].item()
-        divergence = 1 - similarity
-        
-        # Determine if refinement is warranted
-        if divergence > 0.35:
-            # Ask LLM to articulate the refinement - SIMPLER PROMPT
-            prompt = f"""Original Goal: {original_goal}
+        prompt = f"""Original Goal: {original_goal}
+Current Goal: {current_goal}
 Generated Idea: {idea_text}
 Anchors: {', '.join(anchors)}
-Divergence: {divergence:.2f}
 
-What deeper need does this idea address that the original goal missed?
+What deeper need does this idea address that the current goal missed?
 Propose a refined goal in ONE sentence (max 20 words).
 
 Format:
-REFINED_GOAL: [your refined goal]
-REASONING: [your reasoning]
+REFINED_GOAL: [one sentence only]
+REASONING: [one sentence only]
 """
-            result = subprocess.run(
-                ['ollama', 'run', 'llama3.2', prompt],
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
-            
-            # Parse with simple string extraction (more robust than JSON)
-            output = result.stdout.strip()
-            refined_goal = self._extract_line(output, "REFINED_GOAL:")
-            reasoning = self._extract_line(output, "REASONING:")
-            
-            if refined_goal and len(refined_goal) > 10:
-                return {
-                    "divergent": True,
-                    "divergence_score": divergence,
-                    "refined_goal": refined_goal,
-                    "reasoning": reasoning or "Goal refinement based on semantic drift"
-                }
-            else:
-                # Fallback: use divergence alone
-                return {
-                    "divergent": True,
-                    "divergence_score": divergence,
-                    "refined_goal": f"{original_goal} (explored via {anchors[0]})",
-                    "reasoning": f"High divergence ({divergence:.2f}) suggests alternative framing"
-                }
+        result = subprocess.run(
+            ['ollama', 'run', 'llama3.2', prompt],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        output = result.stdout.strip()
+        refined_goal = self._extract_line(output, "REFINED_GOAL:")
+        reasoning = self._extract_line(output, "REASONING:")
+        
+        if refined_goal and len(refined_goal) > 10:
+            return {
+                "divergent": True,
+                "refined_goal": refined_goal,
+                "reasoning": reasoning or "Goal refinement based on idea exploration"
+            }
         else:
             return {
                 "divergent": False,
-                "divergence_score": divergence,
-                "refined_goal": original_goal,
-                "reasoning": "Idea aligns well with original goal"
+                "refined_goal": current_goal,
+                "reasoning": "No refinement needed"
             }
     
     def _extract_line(self, text, prefix):
@@ -157,3 +135,68 @@ REASONING: [your reasoning]
             if line.startswith(prefix):
                 return line.replace(prefix, '').strip()
         return None
+
+    def calculate_dual_anchor_divergence(self, idea_vector, current_goal, original_goal):
+        """
+        Calculate divergence from BOTH current goal (local) and original goal (global).
+        This prevents runaway drift while allowing exploration.
+        """
+        current_goal_vec = self.embed(current_goal)
+        original_goal_vec = self.embed(original_goal)
+        
+        # Local drift: How far from current goal?
+        local_similarity = torch.cosine_similarity(
+            idea_vector.unsqueeze(0), 
+            current_goal_vec.unsqueeze(0)
+        )[0].item()
+        local_drift = 1 - local_similarity
+        
+        # Global drift: How far from original goal?
+        global_similarity = torch.cosine_similarity(
+            idea_vector.unsqueeze(0), 
+            original_goal_vec.unsqueeze(0)
+        )[0].item()
+        global_drift = 1 - global_similarity
+        
+        return {
+            "local": local_drift,
+            "global": global_drift,
+            "local_similarity": local_similarity,
+            "global_similarity": global_similarity
+        }
+
+    def calculate_dual_anchor_divergence(self, idea_input, current_goal, original_goal):
+        """
+        Calculate divergence from BOTH current goal (local) and original goal (global).
+        FIXED: Now handles both string and vector inputs correctly.
+        """
+        # Embed idea if it's a string
+        if isinstance(idea_input, str):
+            idea_vec = self.embed(idea_input)
+        else:
+            idea_vec = idea_input  # Already a vector
+        
+        # Embed goals
+        current_goal_vec = self.embed(current_goal)
+        original_goal_vec = self.embed(original_goal)
+        
+        # Local drift: How far from current goal?
+        local_similarity = torch.cosine_similarity(
+            idea_vec.unsqueeze(0), 
+            current_goal_vec.unsqueeze(0)
+        )[0].item()
+        local_drift = 1 - local_similarity
+        
+        # Global drift: How far from original goal?
+        global_similarity = torch.cosine_similarity(
+            idea_vec.unsqueeze(0), 
+            original_goal_vec.unsqueeze(0)
+        )[0].item()
+        global_drift = 1 - global_similarity
+        
+        return {
+            "local": local_drift,
+            "global": global_drift,
+            "local_similarity": local_similarity,
+            "global_similarity": global_similarity
+        }

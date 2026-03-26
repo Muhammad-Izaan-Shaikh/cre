@@ -3,77 +3,42 @@
     "iteration": 1,
     "goal": "Better mental health support for students",
     "idea": {
-      "idea_name": "MentalMindPal",
-      "description": "A mobile app that connects students with trained mental health professionals through AI-facilitated SMS messaging and community hub integration, leveraging public transit routes to facilitate in-person sessions for those who prefer face-to-face interaction.",
-      "revenue_model": "Subscription-based model offering monthly access to premium features and expert-driven resources."
+      "idea_name": "Mental Health MarketHub",
+      "description": "A community-driven online platform connecting students with local, peer-led mental health support groups and workshops, offering resources for affordable therapy sessions and promoting sustainable wellness practices.",
+      "revenue_model": "Commission-based services from partnered therapy providers and wellness service vendors.",
+      "novelty_explanation": "Distinguishes itself by prioritizing social connections over algorithmic recommendations, creating a more nuanced approach to mental health support."
     },
     "anchors": [
-      "rental platform",
-      "SMS service",
-      "public transit",
-      "community hub",
-      "AI platform"
+      "crowdfunding",
+      "barter system",
+      "food delivery",
+      "community garden",
+      "solar energy"
     ],
-    "score": 8.0,
+    "score": 6.5,
     "passed": true,
-    "refinement": {
-      "divergent": true,
-      "divergence_score": 0.5450201332569122,
-      "refined_goal": "Provides accessible, technology-mediated mental health support tailored to individual students' needs.",
-      "reasoning": "Original goal focused on \"better\" mental health support; this refined goal addresses the actual need for more effective and personalized support."
-    },
-    "energy": 0.9283353090286255
+    "drift": 0.9465160220861435,
+    "energy": 0.9929283261299133
   },
   {
     "iteration": 2,
-    "goal": "Provides accessible, technology-mediated mental health support tailored to individual students' needs.",
+    "goal": "Better mental health support for students",
     "idea": {
       "idea_name": "EcoMind",
-      "description": "A mobile app providing personalized mental health coaching and resources tailored to students' lifestyles, using gamification, rewards, and community support. Users can earn 'eco-points' by completing mindfulness exercises and sharing eco-friendly habits, redeemable for discounts on sustainable products and services.",
-      "revenue_model": "Partnering with eco-friendly businesses to offer exclusive discounts in exchange for user engagement",
-      "novelty_explanation": "EcoMind integrates gamification and rewards to motivate students towards mental wellness, distinct from generic mindfulness apps."
+      "description": "A wearable device that tracks students' mental health through biometric data and provides personalized insights, while powering a small solar panel to charge the device using kinetic energy from daily movements.",
+      "revenue_model": "Subscription-based model offering premium features and personalized coaching for students and educators.",
+      "novelty_explanation": "EcoMind combines wearable technology with sustainable energy harvesting to provide holistic mental health support, distinguishing it from generic wellness apps."
     },
     "anchors": [
-      "local currency",
-      "battery storage",
-      "time bank",
-      "circular economy",
-      "recycling"
-    ],
-    "score": 8.0,
-    "passed": true,
-    "refinement": {
-      "divergent": true,
-      "divergence_score": 0.5845911204814911,
-      "refined_goal": "Provides accessible, technology-mediated mental health support tailored to individual students' sustainable lifestyles and eco-awareness.",
-      "reasoning": "The original goal focused on individual mental health needs, while this refined goal incorporates a broader aspect of sustainability, addressing the deeper need for environmentally conscious well-being."
-    },
-    "energy": 1.0350706577301025
-  },
-  {
-    "iteration": 3,
-    "goal": "Provides accessible, technology-mediated mental health support tailored to individual students' sustainable lifestyles and eco-awareness.",
-    "idea": {
-      "idea_name": "EcoFreshBox",
-      "description": "A meal kit service that sources ingredients from local, sustainable farms and reduces food waste by upcycling imperfect produce. Each weekly box includes recipes tailored to reduce carbon footprint while promoting eco-awareness.",
-      "revenue_model": "Subscription fees for monthly delivery of curated meal kits with a focus on locally sourced, seasonal ingredients",
-      "novelty_explanation": "Unlike generic meal kit services, EcoFreshBox prioritizes sustainability and waste reduction through its unique sourcing model and upcycling practices."
-    },
-    "anchors": [
-      "electric vehicles",
-      "community garden",
-      "food waste reduction",
+      "SMS service",
       "kinetic harvesting",
-      "meal kit"
+      "solar energy",
+      "food waste reduction",
+      "waste management"
     ],
-    "score": 7.5,
-    "passed": true,
-    "refinement": {
-      "divergent": true,
-      "divergence_score": 0.6810216307640076,
-      "refined_goal": "Provides personalized, technology-mediated mental health support for sustainable lifestyle habits and eco-awareness.",
-      "reasoning": "The original goal missed the need for tailored emotional support within eco-conscious lifestyles, whereas this revised goal addresses both physical and mental well-being aspects."
-    },
-    "energy": 0.945763111114502
+    "score": 4.5,
+    "passed": false,
+    "drift": 1.051214560866356,
+    "energy": 1.0459760427474976
   }
 ]

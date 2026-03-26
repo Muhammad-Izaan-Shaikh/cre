@@ -107,12 +107,32 @@ Output ONLY valid JSON, no markdown, no explanations:
         return "Unknown"
 
     def critique(self, idea_dict, goal_text):
-        """Evaluate the full idea"""
-        score = 7.0
+        """
+        Evaluate the full idea INCLUDING goal alignment.
+        """
+        score = 7.0  # Base score
         
         desc = idea_dict.get("description", "").lower()
         revenue = idea_dict.get("revenue_model", "").lower()
         name = idea_dict.get("idea_name", "")
+        
+        # === NEW: Goal Alignment Check ===
+        # Embed both and calculate similarity
+        goal_vec = self.system1.embed(goal_text)
+        idea_vec = self.system1.embed(f"{name} {desc}")
+        alignment = torch.cosine_similarity(goal_vec.unsqueeze(0), idea_vec.unsqueeze(0))[0].item()
+        
+        # Penalize low alignment heavily
+        if alignment < 0.50:
+            score -= 3.0  # Major penalty
+            print(f"  ⚠️ LOW ALIGNMENT: {alignment:.2f}")
+        elif alignment < 0.70:
+            score -= 1.5  # Moderate penalty
+            print(f"  ⚠️ MODERATE ALIGNMENT: {alignment:.2f}")
+        else:
+            score += 1.0  # Reward good alignment
+            print(f"  ✅ GOOD ALIGNMENT: {alignment:.2f}")
+        # =================================
         
         # Penalize vagueness
         if len(desc) < 30:
@@ -120,7 +140,7 @@ Output ONLY valid JSON, no markdown, no explanations:
         if "blockchain" in desc:
             score -= 2.0
         if revenue == "unknown" or len(revenue) < 5:
-            score -= 1.0  # Reduced penalty (was 1.5)
+            score -= 1.0
             
         # Reward specificity
         if name and len(name) > 3:
@@ -128,7 +148,7 @@ Output ONLY valid JSON, no markdown, no explanations:
         if any(word in desc for word in ["subscription", "fee", "commission", "lease", "rent", "per unit"]):
             score += 1.0
         if any(word in desc for word in ["apartment", "resident", "building", "unit"]):
-            score += 0.5  # Goal alignment
+            score += 0.5
             
         return max(0, min(10, score))
 
